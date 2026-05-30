@@ -1,0 +1,172 @@
+
+{% extends 'menu.html' %}
+
+{% block content %}
+   
+    <div class="container">
+        <!-- PANEL CONTROL -->
+        <div class="card control-card">
+            <!-- CRUZ DE MOVIMIENTO -->
+            <div class="controls-cross">
+                <div></div>
+                <button onclick="move('forward')">
+                    ↑
+                </button>
+                <div></div>
+                <button onclick="move('left')">
+                    ←
+                </button>
+                <button class="stop" onclick="move('stop')">
+                    ■
+                </button>
+                <button onclick="move('right')">
+                    →
+                </button>
+                <div></div>
+                <button onclick="move('back')">
+                    ↓
+                </button>
+                <div></div>
+            </div>
+            <!-- VELOCIDAD -->
+            <div class="speed-box">
+                <input class="slider"
+                    type="range"
+                    min="1"
+                    max="10"
+                    value="2"
+                    onchange="setSpeed(this.value)">
+                <p>
+                    Velocidad actual:
+                    <span id="speed">2</span>
+                </p>
+            </div>
+            <!-- LEDS -->
+            <div class="led-controls">
+                <button onclick="led('red')">Rojo</button>
+                <button onclick="led('green')">Verde</button>
+                <button onclick="led('blue')">Azul</button>
+                <button onclick="led('white')">Blanco</button>
+                <input class="slider" type="range" min="0" max="180" value="90"onchange="setServo(this.value)">
+                <p>Ángulo: <span id="servoAngle">90</span>°</p>
+            </div>
+        </div>
+
+        <!-- CAMARA -->
+        <div class="card camera-card">
+            <div id="resultado"></div>
+            <img class="camera" src="/control_remoto/video/">
+        </div>
+        <div class="card control-card">
+            <!-- BOTON IA -->
+            <div class="detect-box">
+                <button class="detect-btn" onclick="detectarMaleza()">
+                    Detectar Maleza
+                </button>
+            </div>
+
+            <!-- SERVOS -->
+            <div class="controls-cross">    
+                <div></div>
+                <button onclick="subirServoY()">↑</button>
+                <div></div>
+                <button onclick="subirServoX()">←</button>
+                <button onclick="centrarServoY()">Centrar</button>
+                <button onclick="bajarServoX()">→</button>
+                <div></div>
+                <button onclick="bajarServoY()">↓</button>
+                <div></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+        function setSpeed(v){
+            fetch("/control_remoto/speed/" + v + "/");
+        }
+        function move(direction){
+            fetch("/control_remoto/move/" + direction + "/");
+        }
+        function led(c){
+            fetch("/control_remoto/led/" + c + "/");
+        }
+
+        function setServo(v){
+            document.getElementById("servoAngle").innerText = v;
+            fetch("/control_remoto/servo/" + v + "/");
+        }
+        function subirServoY() {
+            fetch("/control_remoto/servo_y/subir/");
+        }
+        function bajarServoY() {
+            fetch("/control_remoto/servo_y/bajar/");
+        }
+        function centrarServoY() {
+            fetch("/control_remoto/servo_y/centrar/");
+        }
+        function subirServoX() {
+            fetch("/control_remoto/servo_x/subir/");
+        }
+        function bajarServoX() {
+            fetch("/control_remoto/servo_x/bajar/");
+        }
+        function buzzer(state) {
+            fetch("/control_remoto/buzzer/" + state + "/");
+        }
+        function updateStatus(){
+            fetch("/control_remoto/status/")
+            .then(res=>res.json())
+            .then(data=>{
+                //document.getElementById("dist").innerText = data.distance;
+                document.getElementById("speed").innerText = data.speed;
+            });
+        }
+        setInterval(updateStatus, 500);
+        async function detectarMaleza(){
+            const resultadoDiv =
+                document.getElementById("resultado");
+            resultadoDiv.innerHTML =
+                "Analizando...";
+            const response =
+                await fetch("/control_remoto/detectar/");
+            const data =
+                await response.json();
+            console.log(data);
+            resultadoDiv.innerHTML = "";
+            // DETECCION
+            if(data.detecciones){
+                let deteccion =
+                    data.detecciones;
+                if(deteccion.confianza >= 95){
+                    resultadoDiv.innerHTML = `
+                        <div class="resultado-ok">
+                            🌱 Maleza Detectada
+                            <br>
+                            Confianza:
+                            ${deteccion.confianza}%
+                        </div>
+                    `;
+                }
+                else{
+                    resultadoDiv.innerHTML = `
+                        <div class="resultado-no">
+                            ❌ No se detectó maleza
+                            <br>
+                            Confianza:
+                            ${deteccion.confianza}%
+                        </div>
+                    `;
+                }
+            }
+            else{
+                resultadoDiv.innerHTML = `
+                    <div class="resultado-no">
+                        ❌ Error al analizar la imagen
+                    </div>
+                `;
+            }
+        }
+    </script>
+{% endblock %}
+
+ 
