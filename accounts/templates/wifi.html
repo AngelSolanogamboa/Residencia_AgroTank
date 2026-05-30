@@ -1,0 +1,89 @@
+{% extends 'menu.html' %}
+
+{% block content %}
+    <title>Configuración WiFi - Raspberry Pi</title>
+
+    <div class="container">
+        <h1>Configuración WiFi 📶</h1>
+
+        <div id="status"></div>
+
+        <button class="refresh" onclick="loadNetworks()">Actualizar redes</button>
+
+        <div id="networks"></div>
+    </div>
+    <script>
+        async function loadNetworks() {
+            const statusDiv = document.getElementById("status");
+            const networksDiv = document.getElementById("networks");
+
+            networksDiv.innerHTML = "Cargando redes...";
+
+                try {
+                    const response = await fetch("/wifi/networks");
+                    const data = await response.json();
+
+                // Mostrar redes disponibles
+                networksDiv.innerHTML = "";
+
+                if (!data.networks || data.networks.length === 0) {
+                    networksDiv.innerHTML = "No se encontraron redes disponibles";
+                    return;
+                }
+
+                data.networks.forEach(ssid => {
+                    const div = document.createElement("div");
+                    div.className = "network";
+
+                    div.innerHTML = `
+                        <div class="network-name">${ssid}</div>
+                        <input type="password" placeholder="Ingrese la contraseña" id="pass-${ssid}">
+                        <button onclick="connect('${ssid}')">Conectar</button>
+                    `;
+
+                    networksDiv.appendChild(div);
+                });
+
+            } catch (error) {
+                networksDiv.innerHTML = "Error al cargar redes";
+                console.error(error);
+            }
+        }
+
+        async function connect(ssid) {
+            const password = document.getElementById(`pass-${ssid}`).value;
+
+            if (!password) {
+                alert("Ingrese la contraseña");
+                return;
+            }
+
+            try {
+                const response = await fetch("/wifi/connect", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        ssid: ssid,
+                        password: password
+                    })
+                });
+
+                const result = await response.json();
+
+                alert(result.message);
+
+                loadNetworks();
+
+            } catch (error) {
+                alert("Error al conectar");
+                console.error(error);
+            }
+        }
+
+        // Cargar redes al iniciar
+        window.onload = loadNetworks;
+    </script>
+
+{% endblock %}
